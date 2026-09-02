@@ -21,34 +21,14 @@ let timerInterval = null;
 let transcript = "";
 let recognition = null;
 let phraseDetected = false;
-let recognitionErrored = false;
-
-const MIN_DISTANCE_FROM_YES = 160; // px, enforced so No can never land near Yes
 
 function moveNoButton() {
+  const area = $("buttons").getBoundingClientRect();
   const btn = noBtn.getBoundingClientRect();
-  const yes = yesBtn.getBoundingClientRect();
-  const yesCenterX = yes.left + yes.width / 2;
-  const yesCenterY = yes.top + yes.height / 2;
-
-  const pad = 12;
-  const maxX = Math.max(pad, window.innerWidth - btn.width - pad);
-  const maxY = Math.max(pad, window.innerHeight - btn.height - pad);
-
-  let x, y, tries = 0;
-  do {
-    x = pad + Math.random() * (maxX - pad);
-    y = pad + Math.random() * (maxY - pad);
-    const centerX = x + btn.width / 2;
-    const centerY = y + btn.height / 2;
-    const dist = Math.hypot(centerX - yesCenterX, centerY - yesCenterY);
-    tries++;
-    if (dist >= MIN_DISTANCE_FROM_YES || tries > 30) break;
-  } while (true);
-
-  noBtn.classList.add("roaming");
-  noBtn.style.left = x + "px";
-  noBtn.style.top = y + "px";
+  const maxX = Math.max(0, area.width - btn.width);
+  const maxY = Math.max(0, area.height - btn.height);
+  noBtn.style.left = Math.floor(Math.random() * maxX) + "px";
+  noBtn.style.top = Math.floor(Math.random() * maxY) + "px";
   tease.textContent = ["Nope 😌", "Too slow!", "Try again 🙈", "That button has other plans 😂"][Math.floor(Math.random()*4)];
 }
 ["mouseenter","pointerdown","touchstart","focus"].forEach(ev => noBtn.addEventListener(ev, moveNoButton));
@@ -63,7 +43,7 @@ yesBtn.addEventListener("click", () => {
 function setupRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
-    support.textContent = "Speech recognition isn't supported in this browser — recording still works, and Send will unlock once you've recorded something.";
+    support.textContent = "Speech recognition isn't supported in this browser, so the phrase can't be auto-checked — but recording still works, and Send will unlock once you've recorded something.";
     return;
   }
   recognition = new SR();
@@ -78,6 +58,7 @@ function setupRecognition() {
     }
     transcript += " " + text;
     transcript = transcript.slice(-1000);
+    transcriptEl.textContent = transcript.trim() || "Listening…";
 
     const normalized = transcript.toLowerCase()
       .replace(/[.,!?]/g, " ")
@@ -86,17 +67,11 @@ function setupRecognition() {
 
     if (/\bi\s+love\s+you\b/.test(normalized) || /\beye\s+love\s+you\b/.test(normalized)) {
       phraseDetected = true;
-    }
-
-    if (recording) {
-      transcriptEl.textContent = phraseDetected
-        ? "Heard it! Keep going or press stop. ❤️"
-        : (transcript.trim() ? `Hearing: “${transcript.trim()}”` : "Listening…");
+      sendBtn.disabled = false;
+      transcriptEl.textContent = "Phrase detected: “I love you” ❤️";
     }
   };
-  recognition.onerror = (e) => {
-    recognitionErrored = true;
-  };
+  recognition.onerror = () => {};
   recognition.onend = () => {
     if (recording) {
       try { recognition.start(); } catch {}
@@ -153,19 +128,24 @@ function stopRecording() {
 }
 
 function finalizeRecording() {
-  if (!chunks.length) {
-    transcriptEl.textContent = "No audio captured. Please try recording again.";
+  const recognitionAvailable = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+  if (recognitionAvailable && !phraseDetected) {
+    transcriptEl.textContent = "I didn't detect “I love you” yet. Try recording again clearly.";
     sendBtn.disabled = true;
     return;
   }
 
-  // Audio was captured successfully — that's all we require to send.
-  sendBtn.disabled = false;
-
-  if (phraseDetected) {
-    transcriptEl.textContent = "Heard “I love you” ❤️ — press send when ready.";
+  // No speech recognition available (e.g. Safari/iOS) or phrase confirmed:
+  // unlock sending as long as we actually captured audio.
+  if (chunks.length) {
+    sendBtn.disabled = false;
+    if (!recognitionAvailable) {
+      transcriptEl.textContent = "Got your recording 🎙️ — press send when ready.";
+    }
   } else {
-    transcriptEl.textContent = "Got your recording 🎙️ — press send when ready.";
+    transcriptEl.textContent = "No audio captured. Please try recording again.";
+    sendBtn.disabled = true;
   }
 }
 

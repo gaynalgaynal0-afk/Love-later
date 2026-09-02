@@ -31,7 +31,6 @@ button,.open-letter{
 }
 .yes{background:#ff5d89;color:white;box-shadow:0 10px 25px rgba(255,93,137,.28);position:relative;z-index:1}
 .no{background:#eee;color:#333;position:absolute;left:50%;top:50%;transform:translate(calc(-50% + 60px),-50%)}
-.no.roaming{position:fixed;transform:none;z-index:50;transition:left .18s ease,top .18s ease}
 button:hover{transform:translateY(-2px)}
 .tease{min-height:22px;color:#a73a60;font-size:14px}
 .record-row{display:flex;justify-content:center;align-items:center;gap:14px;margin:24px 0 12px}
