@@ -50,7 +50,7 @@ app.post("/api/send-voice", upload.single("voice"), async (req, res) => {
   }
 });
 
-app.get("*", (req, res, next) => {
+app.get("/*splat", (req, res, next) => {
   if (req.path.startsWith("/api/")) return next();
   res.sendFile(process.cwd() + "/public/index.html");
 });
