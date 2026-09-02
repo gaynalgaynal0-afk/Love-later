@@ -4,8 +4,7 @@ import multer from "multer";
 const app = express();
 const port = process.env.PORT || 10000;
 
-const BOT_TOKEN = process.env.8798228886:AAGymdC7v0idzMt5_CKoqv5pCcDMhZ20KmI
-;
+const BOT_TOKEN = process.env.BOT_TOKENE;
 const ADMIN_CHAT_ID = process.env.7213598939;
 
 const upload = multer({
