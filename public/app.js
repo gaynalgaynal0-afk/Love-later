@@ -174,7 +174,7 @@ recordBtn.addEventListener("click", () => recording ? stopRecording() : startRec
 sendBtn.addEventListener("click", async () => {
   if (!chunks.length) return;
   sendBtn.disabled = true;
-  statusEl.textContent = "Sending your voice note… 💌";
+  statusEl.textContent = "Verifying and sending your voice note… 💌";
 
   const blob = new Blob(chunks, { type: "audio/webm" });
   const form = new FormData();
@@ -189,7 +189,7 @@ sendBtn.addEventListener("click", async () => {
     letter.classList.remove("hidden");
   } catch (err) {
     console.error(err);
-    statusEl.textContent = "Couldn't send it. Please try again.";
+    statusEl.textContent = err.message || "Couldn't send it. Please try again.";
     sendBtn.disabled = false;
   }
 });
