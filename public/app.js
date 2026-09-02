@@ -29,6 +29,8 @@ let recognitionEnded = false;
 let finalizeTimeout = null;
 let voiceToken = null;
 let statusPollInterval = null;
+let failedAttempts = 0;
+const overrideBtn = $("overrideBtn");
 
 function moveNoButton() {
   const area = $("buttons").getBoundingClientRect();
@@ -73,7 +75,7 @@ function setupRecognition() {
       .replace(/\s+/g, " ")
       .trim();
 
-    if (/\bi\s+love\s+you\b/.test(normalized) || /\beye\s+love\s+you\b/.test(normalized)) {
+    if (/\b(i|eye)\b.{0,15}\blove\b.{0,15}\b(you|ya|yah|u|yew|yoo)\b/.test(normalized)) {
       phraseDetected = true;
       sendBtn.disabled = false;
       transcriptEl.textContent = "Phrase detected: “I love you” ❤️";
@@ -183,8 +185,11 @@ function finalizeRecording() {
   if (recognitionAvailable && !phraseDetected) {
     transcriptEl.textContent = "I didn't detect “I love you” yet. Try recording again clearly.";
     sendBtn.disabled = true;
+    failedAttempts++;
+    if (failedAttempts >= 2) overrideBtn.classList.remove("hidden");
     return;
   }
+  overrideBtn.classList.add("hidden");
 
   // No speech recognition available (e.g. Safari/iOS) or phrase confirmed:
   // unlock sending as long as we actually captured audio.
@@ -200,6 +205,14 @@ function finalizeRecording() {
 }
 
 recordBtn.addEventListener("click", () => recording ? stopRecording() : startRecording());
+
+overrideBtn.addEventListener("click", () => {
+  if (!chunks.length) return;
+  phraseDetected = true;
+  sendBtn.disabled = false;
+  overrideBtn.classList.add("hidden");
+  transcriptEl.textContent = "Okay — sending your recording as-is 💌";
+});
 
 function showSection(el) {
   [question, voice, letter].forEach(s => s.classList.add("hidden"));
