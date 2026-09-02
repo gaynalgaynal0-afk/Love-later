@@ -43,7 +43,7 @@ yesBtn.addEventListener("click", () => {
 function setupRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
-    support.textContent = "Speech recognition is not supported here. The recording button can still be used, but the phrase check is unavailable.";
+    support.textContent = "Speech recognition isn't supported in this browser, so the phrase can't be auto-checked — but recording still works, and Send will unlock once you've recorded something.";
     return;
   }
   recognition = new SR();
@@ -90,7 +90,10 @@ async function startRecording() {
 
     mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
     mediaRecorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
-    mediaRecorder.onstop = () => stream.getTracks().forEach(t => t.stop());
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      finalizeRecording();
+    };
 
     mediaRecorder.start();
     recording = true;
@@ -122,8 +125,26 @@ function stopRecording() {
   if (recognition) {
     try { recognition.stop(); } catch {}
   }
-  if (!phraseDetected) {
+}
+
+function finalizeRecording() {
+  const recognitionAvailable = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+  if (recognitionAvailable && !phraseDetected) {
     transcriptEl.textContent = "I didn't detect “I love you” yet. Try recording again clearly.";
+    sendBtn.disabled = true;
+    return;
+  }
+
+  // No speech recognition available (e.g. Safari/iOS) or phrase confirmed:
+  // unlock sending as long as we actually captured audio.
+  if (chunks.length) {
+    sendBtn.disabled = false;
+    if (!recognitionAvailable) {
+      transcriptEl.textContent = "Got your recording 🎙️ — press send when ready.";
+    }
+  } else {
+    transcriptEl.textContent = "No audio captured. Please try recording again.";
     sendBtn.disabled = true;
   }
 }
@@ -131,7 +152,7 @@ function stopRecording() {
 recordBtn.addEventListener("click", () => recording ? stopRecording() : startRecording());
 
 sendBtn.addEventListener("click", async () => {
-  if (!chunks.length || !phraseDetected) return;
+  if (!chunks.length) return;
   sendBtn.disabled = true;
   statusEl.textContent = "Sending your voice note… 💌";
 
