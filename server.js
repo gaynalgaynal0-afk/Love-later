@@ -58,21 +58,29 @@ app.post("/api/send-voice", upload.single("voice"), async (req, res) => {
       return res.status(400).json({ ok: false, error: "No voice recording received." });
     }
 
+    console.log("GROQ_API_KEY present:", !!GROQ_API_KEY);
+
     if (GROQ_API_KEY) {
       let transcript = "";
       try {
         transcript = await transcribeAudio(req.file.buffer, req.file.mimetype);
+        console.log("Transcript received:", JSON.stringify(transcript));
       } catch (err) {
         console.error("Transcription error:", err);
         return res.status(502).json({ ok: false, error: "Couldn't verify the recording. Please try again." });
       }
 
-      if (!containsILoveYou(transcript)) {
+      const matched = containsILoveYou(transcript);
+      console.log("Phrase matched:", matched);
+
+      if (!matched) {
         return res.status(422).json({
           ok: false,
           error: "I couldn't hear \u201cI love you\u201d in that recording. Please try again, speaking clearly."
         });
       }
+    } else {
+      console.log("Skipping verification: GROQ_API_KEY not set");
     }
 
     const form = new FormData();
