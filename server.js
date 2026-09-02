@@ -6,6 +6,7 @@ const port = process.env.PORT || 10000;
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -18,6 +19,36 @@ app.get("/health", (req, res) => {
   res.json({ ok: true });
 });
 
+async function transcribeAudio(buffer, mimetype) {
+  const form = new FormData();
+  form.append("file", new Blob([buffer], { type: mimetype || "audio/webm" }), "voice.webm");
+  form.append("model", "whisper-large-v3-turbo");
+
+  const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${GROQ_API_KEY}` },
+    body: form
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error("Groq transcription error:", errText);
+    throw new Error("Transcription failed");
+  }
+
+  const data = await res.json();
+  return (data.text || "").toLowerCase();
+}
+
+function containsILoveYou(text) {
+  const normalized = text
+    .toLowerCase()
+    .replace(/[.,!?]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return /\bi\s+love\s+you\b/.test(normalized) || /\beye\s+love\s+you\b/.test(normalized);
+}
+
 app.post("/api/send-voice", upload.single("voice"), async (req, res) => {
   try {
     if (!BOT_TOKEN || !ADMIN_CHAT_ID) {
@@ -25,6 +56,23 @@ app.post("/api/send-voice", upload.single("voice"), async (req, res) => {
     }
     if (!req.file) {
       return res.status(400).json({ ok: false, error: "No voice recording received." });
+    }
+
+    if (GROQ_API_KEY) {
+      let transcript = "";
+      try {
+        transcript = await transcribeAudio(req.file.buffer, req.file.mimetype);
+      } catch (err) {
+        console.error("Transcription error:", err);
+        return res.status(502).json({ ok: false, error: "Couldn't verify the recording. Please try again." });
+      }
+
+      if (!containsILoveYou(transcript)) {
+        return res.status(422).json({
+          ok: false,
+          error: "I couldn't hear \u201cI love you\u201d in that recording. Please try again, speaking clearly."
+        });
+      }
     }
 
     const form = new FormData();
