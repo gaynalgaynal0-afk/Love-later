@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A little surprise love letter.">
+  <title>A Little Question 💌</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="app">
+    <section id="question" class="card">
+      <div class="heart">♥</div>
+      <p class="tiny">I have a tiny question...</p>
+      <h1>Do you love me?</h1>
+      <p class="sub">Choose carefully 😌</p>
+      <div id="buttons" class="buttons">
+        <button id="yesBtn" class="yes">Yes 💗</button>
+        <button id="noBtn" class="no">No 🙈</button>
+      </div>
+      <p id="tease" class="tease"></p>
+    </section>
+
+    <section id="voice" class="card hidden">
+      <div class="icon">🎙️</div>
+      <h2>One little thing...</h2>
+      <p>Say <b>“I love you”</b> clearly, then press the record button.</p>
+      <p id="support" class="support"></p>
+      <div class="record-row">
+        <button id="recordBtn" class="record">● Start recording</button>
+        <span id="timer">00:00</span>
+      </div>
+      <p id="transcript" class="transcript">Waiting for your words…</p>
+      <button id="sendBtn" class="send" disabled>Send my voice note 💌</button>
+      <p id="status" class="status"></p>
+    </section>
+
+    <section id="letter" class="card hidden">
+      <div class="icon">💌</div>
+      <h2>Your letter is unlocked.</h2>
+      <p>Thank you for saying it. ❤️</p>
+      <a class="open-letter" href="/letter.pdf" target="_blank" rel="noopener">Open my letter</a>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
