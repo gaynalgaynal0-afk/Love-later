@@ -36,10 +36,17 @@
     </section>
 
     <section id="letter" class="card hidden">
-      <div class="icon">💌</div>
-      <h2>Your letter is unlocked.</h2>
-      <p>Thank you for saying it. ❤️</p>
-      <a class="open-letter" href="/letter.pdf" target="_blank" rel="noopener">Open my letter</a>
+      <div id="letterWaiting">
+        <div class="icon">⏳</div>
+        <h2>Almost there.</h2>
+        <p>I've got your voice note. I'll unlock the letter for you very soon — this page will update on its own, no need to refresh 💌</p>
+      </div>
+      <div id="letterReady" class="hidden">
+        <div class="icon">💌</div>
+        <h2>Your letter is unlocked.</h2>
+        <p>Thank you for saying it. ❤️</p>
+        <a id="letterLink" class="open-letter" href="#" target="_blank" rel="noopener">Open my letter</a>
+      </div>
     </section>
   </main>
   <script src="/app.js"></script>

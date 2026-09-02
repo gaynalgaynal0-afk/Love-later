@@ -3,6 +3,9 @@ const $ = (id) => document.getElementById(id);
 const question = $("question");
 const voice = $("voice");
 const letter = $("letter");
+const letterWaiting = $("letterWaiting");
+const letterReady = $("letterReady");
+const letterLink = $("letterLink");
 const yesBtn = $("yesBtn");
 const noBtn = $("noBtn");
 const tease = $("tease");
@@ -21,6 +24,11 @@ let timerInterval = null;
 let transcript = "";
 let recognition = null;
 let phraseDetected = false;
+let mediaStopped = false;
+let recognitionEnded = false;
+let finalizeTimeout = null;
+let voiceToken = null;
+let statusPollInterval = null;
 
 function moveNoButton() {
   const area = $("buttons").getBoundingClientRect();
@@ -71,10 +79,19 @@ function setupRecognition() {
       transcriptEl.textContent = "Phrase detected: “I love you” ❤️";
     }
   };
-  recognition.onerror = () => {};
+  recognition.onerror = (event) => {
+    if (event.error === "no-speech" || event.error === "aborted") return;
+    support.textContent = `Voice recognition hit an error (${event.error}). Recording still works — Send will unlock once you've recorded something.`;
+  };
   recognition.onend = () => {
     if (recording) {
+      // Still recording (e.g. engine auto-restarts every ~60s) — keep listening.
       try { recognition.start(); } catch {}
+    } else {
+      // This is the real end, triggered by stopRecording(). Give it a moment
+      // to finish processing before we trust phraseDetected either way.
+      recognitionEnded = true;
+      maybeFinalize();
     }
   };
 }
@@ -84,6 +101,9 @@ async function startRecording() {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     chunks = [];
     phraseDetected = false;
+    mediaStopped = false;
+    recognitionEnded = false;
+    if (finalizeTimeout) clearTimeout(finalizeTimeout);
     transcript = "";
     transcriptEl.textContent = "Listening…";
     sendBtn.disabled = true;
@@ -92,7 +112,8 @@ async function startRecording() {
     mediaRecorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
     mediaRecorder.onstop = () => {
       stream.getTracks().forEach(t => t.stop());
-      finalizeRecording();
+      mediaStopped = true;
+      maybeFinalize();
     };
 
     mediaRecorder.start();
@@ -117,13 +138,42 @@ async function startRecording() {
 
 function stopRecording() {
   if (!mediaRecorder || !recording) return;
-  mediaRecorder.stop();
   recording = false;
   clearInterval(timerInterval);
   recordBtn.textContent = "● Record again";
   recordBtn.classList.remove("recording");
+  if (!phraseDetected) transcriptEl.textContent = "Checking what you said…";
+  mediaRecorder.stop();
   if (recognition) {
     try { recognition.stop(); } catch {}
+  } else {
+    recognitionEnded = true;
+  }
+}
+
+function maybeFinalize() {
+  const recognitionAvailable = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+  // If there's no recognition engine at all, we only need the recorder to stop.
+  if (!recognitionAvailable) {
+    if (mediaStopped) finalizeRecording();
+    return;
+  }
+
+  if (mediaStopped && recognitionEnded) {
+    if (finalizeTimeout) { clearTimeout(finalizeTimeout); finalizeTimeout = null; }
+    finalizeRecording();
+    return;
+  }
+
+  // Recognition can take a little while to deliver its final result after
+  // stop() is called. Give it up to 1.5s past mediaRecorder stopping before
+  // finalizing anyway, so we never hang forever if onend doesn't fire.
+  if (mediaStopped && !finalizeTimeout) {
+    finalizeTimeout = setTimeout(() => {
+      finalizeTimeout = null;
+      finalizeRecording();
+    }, 1500);
   }
 }
 
@@ -151,6 +201,69 @@ function finalizeRecording() {
 
 recordBtn.addEventListener("click", () => recording ? stopRecording() : startRecording());
 
+function showSection(el) {
+  [question, voice, letter].forEach(s => s.classList.add("hidden"));
+  el.classList.remove("hidden");
+}
+
+function stopPolling() {
+  if (statusPollInterval) {
+    clearInterval(statusPollInterval);
+    statusPollInterval = null;
+  }
+}
+
+function showUnlocked(token) {
+  stopPolling();
+  letterLink.href = `/api/letter?token=${encodeURIComponent(token)}`;
+  letterWaiting.classList.add("hidden");
+  letterReady.classList.remove("hidden");
+  showSection(letter);
+}
+
+function showWaiting(token) {
+  letterReady.classList.add("hidden");
+  letterWaiting.classList.remove("hidden");
+  showSection(letter);
+  stopPolling();
+  statusPollInterval = setInterval(async () => {
+    try {
+      const res = await fetch(`/api/letter-status?token=${encodeURIComponent(token)}`);
+      const data = await res.json();
+      if (data.verified && data.letterEnabled) {
+        showUnlocked(token);
+      } else if (!data.verified) {
+        // Token expired or server restarted and lost it — back to the start.
+        stopPolling();
+        try { localStorage.removeItem("loveLetterToken"); } catch {}
+      }
+    } catch {
+      // Network hiccup — just try again on the next tick.
+    }
+  }, 8000);
+}
+
+// If we already have a token from a previous visit, skip straight past the
+// question/recording steps instead of making them do it all again.
+(async function resumeIfVerified() {
+  let saved = null;
+  try { saved = localStorage.getItem("loveLetterToken"); } catch {}
+  if (!saved) return;
+  try {
+    const res = await fetch(`/api/letter-status?token=${encodeURIComponent(saved)}`);
+    const data = await res.json();
+    if (data.verified) {
+      voiceToken = saved;
+      if (data.letterEnabled) showUnlocked(saved);
+      else showWaiting(saved);
+    } else {
+      localStorage.removeItem("loveLetterToken");
+    }
+  } catch {
+    // Couldn't reach the server — just fall through to the normal flow.
+  }
+})();
+
 sendBtn.addEventListener("click", async () => {
   if (!chunks.length) return;
   sendBtn.disabled = true;
@@ -165,8 +278,14 @@ sendBtn.addEventListener("click", async () => {
     const data = await response.json();
     if (!response.ok || !data.ok) throw new Error(data.error || "Send failed");
 
-    voice.classList.add("hidden");
-    letter.classList.remove("hidden");
+    voiceToken = data.token;
+    try { localStorage.setItem("loveLetterToken", data.token); } catch {}
+
+    if (data.letterEnabled) {
+      showUnlocked(data.token);
+    } else {
+      showWaiting(data.token);
+    }
   } catch (err) {
     console.error(err);
     statusEl.textContent = "Couldn't send it. Please try again.";

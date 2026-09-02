@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Letter Switch</title>
+  <link rel="stylesheet" href="/style.css">
+  <meta name="robots" content="noindex, nofollow">
+</head>
+<body>
+  <main class="app">
+    <section class="card">
+      <div class="icon">🔑</div>
+      <h2>Letter switch</h2>
+      <div id="secretForm">
+        <p class="sub">Enter your admin secret to continue.</p>
+        <input id="secretInput" type="password" placeholder="Admin secret"
+               style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;margin:10px 0;">
+        <button id="saveSecret" class="yes" style="position:static;">Continue</button>
+      </div>
+      <div id="switchPanel" class="hidden">
+        <p class="sub">The letter is currently:</p>
+        <h1 id="statusLabel">—</h1>
+        <div class="record-row" style="justify-content:center;gap:12px;">
+          <button id="enableBtn" class="record">Turn ON</button>
+          <button id="disableBtn" class="record">Turn OFF</button>
+        </div>
+        <p id="adminStatus" class="status"></p>
+        <p class="tiny"><a href="#" id="forgetSecret">Use a different secret</a></p>
+      </div>
+    </section>
+  </main>
+  <script src="/admin.js"></script>
+</body>
+</html>
