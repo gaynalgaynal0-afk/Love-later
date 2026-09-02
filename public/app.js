@@ -32,7 +32,8 @@ function moveNoButton() {
   noBtn.style.top = Math.floor(Math.random() * maxY) + "px";
   tease.textContent = ["Nope 😌", "Too slow!", "Try again 🙈", "That button has other plans 😂"][Math.floor(Math.random()*4)];
 }
-["mouseenter","pointerdown","touchstart","focus"].forEach(ev => noBtn.addEventListener(ev, moveNoButton));
+
+["mouseenter", "pointerdown", "touchstart", "focus"].forEach(ev => noBtn.addEventListener(ev, moveNoButton));
 noBtn.addEventListener("click", (e) => { e.preventDefault(); moveNoButton(); });
 
 yesBtn.addEventListener("click", () => {
@@ -47,7 +48,15 @@ async function startRecording() {
     transcriptEl.textContent = "Recording…";
     sendBtn.disabled = true;
 
-    mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+    // Cross-browser MIME type check (iOS Safari compatibility fix)
+    let options = {};
+    if (MediaRecorder.isTypeSupported("audio/webm")) {
+      options = { mimeType: "audio/webm" };
+    } else if (MediaRecorder.isTypeSupported("audio/mp4")) {
+      options = { mimeType: "audio/mp4" };
+    }
+
+    mediaRecorder = new MediaRecorder(stream, options);
     mediaRecorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
     mediaRecorder.onstop = () => {
       stream.getTracks().forEach(t => t.stop());
@@ -119,18 +128,15 @@ function showWaiting(token) {
       if (data.verified && data.letterEnabled) {
         showUnlocked(token);
       } else if (!data.verified) {
-        // Token expired or server restarted and lost it — back to the start.
         stopPolling();
         try { localStorage.removeItem("loveLetterToken"); } catch {}
       }
     } catch {
-      // Network hiccup — just try again on the next tick.
+      // Network hiccup — try again on next tick.
     }
   }, 8000);
 }
 
-// If we already have a token from a previous visit, skip straight past the
-// question/recording steps instead of making them do it all again.
 (async function resumeIfVerified() {
   let saved = null;
   try { saved = localStorage.getItem("loveLetterToken"); } catch {}
@@ -146,7 +152,7 @@ function showWaiting(token) {
       localStorage.removeItem("loveLetterToken");
     }
   } catch {
-    // Couldn't reach the server — just fall through to the normal flow.
+    // Couldn't reach server.
   }
 })();
 
@@ -155,7 +161,8 @@ sendBtn.addEventListener("click", async () => {
   sendBtn.disabled = true;
   statusEl.textContent = "Sending your voice note… 💌";
 
-  const blob = new Blob(chunks, { type: "audio/webm" });
+  const mimeType = mediaRecorder.mimeType || "audio/webm";
+  const blob = new Blob(chunks, { type: mimeType });
   const form = new FormData();
   form.append("voice", blob, "i-love-you.webm");
 
@@ -177,3 +184,4 @@ sendBtn.addEventListener("click", async () => {
     statusEl.textContent = "Couldn't send it. Please try again.";
     sendBtn.disabled = false;
   }
+});
