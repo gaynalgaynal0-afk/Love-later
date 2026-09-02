@@ -5,7 +5,7 @@ const app = express();
 const port = process.env.PORT || 10000;
 
 const BOT_TOKEN = process.env.BOT_TOKENE;
-const ADMIN_CHAT_ID = process.env.7213598939;
+const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID;
 
 const upload = multer({
   storage: multer.memoryStorage(),
