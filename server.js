@@ -4,8 +4,9 @@ import multer from "multer";
 const app = express();
 const port = process.env.PORT || 10000;
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID;
+const BOT_TOKEN = process.env.8798228886:AAGymdC7v0idzMt5_CKoqv5pCcDMhZ20KmI
+;
+const ADMIN_CHAT_ID = process.env.7213598939;
 
 const upload = multer({
   storage: multer.memoryStorage(),
